@@ -14,3 +14,8 @@ If you don't mind, and if you read please give me some information!
 3. Hi guys, my name is Justin Garvida and I'm studying Software Engineering!
   - Email: justingarvida1@gmail.com
   - LinkedIn: https://www.linkedin.com/in/justingarvida/
+    
+4. Hi Everyone! My name is Noor Baig. I'm studying computer science.
+   My email is noor.s.baig@gmail.com.
+   My linkedin is https://www.linkedin.com/in/noor-baig-3773a4290/
+
