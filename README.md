@@ -1,8 +1,6 @@
 # Team-13
 
-[Link to editable presentation.](https://www.canva.com/design/DAG4EEBmpug/WV1XFZX-z3nVwbQ2ATPyvg/edit) (I'll make it a PDF when completed!)
-
-Learners Site is a web platform designed to help students explore courses, track progress, and give institutions an easy way to manage learning data.
+CLEP Finder Portal is a web platform designed to help students explore courses, track progress, and give institutions an easy way to manage learning data.
 
 Project Structure
 backend/ – Node.js + Express server with Supabase and PostgreSQL
