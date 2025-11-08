@@ -3,13 +3,16 @@
 [Link to editable presentation.](https://www.canva.com/design/DAG4EEBmpug/WV1XFZX-z3nVwbQ2ATPyvg/edit) (I'll make it a PDF when completed!)
 
 Learners Site is a web platform designed to help students explore courses, track progress, and give institutions an easy way to manage learning data.
+
 Project Structure
 backend/ – Node.js + Express server with Supabase and PostgreSQL
 studentview/ – Learner-facing front end built with React, Vite, and CSS
 admin/ – Admin and institution dashboard built with React, Vite, and CSS
+
 Tech Stack
 Frontend: React, Vite, CSS
 Backend: Node.js, Express, Supabase, PostgreSQL
+
 Features
 Secure authentication and user management
 Course tracking and progress visualization
