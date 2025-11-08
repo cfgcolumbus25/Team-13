@@ -20,7 +20,7 @@ const acceptanceRoutes = require("./routes/acceptances");
 app.use("/api/auth", authRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/institutions", institutionRoutes);
-app.use("/api/acceptance", acceptanceRoutes);
+app.use("/api/acceptances", acceptanceRoutes);
 
 app.listen(PORT, () => {
   console.log("Server is running on port " + PORT);

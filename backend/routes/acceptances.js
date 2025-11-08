@@ -7,50 +7,41 @@ const { getInstitutionsNearby } = require("../services/nearbyInstitutions");
 // Allows for custom minimum cut score, exam_ids, and radius + zip
 router.get("/", async (req, res) => {
   try {
-    const { min_cut_score, exam_ids, zipcode, radius } = req.query;
+    const { cut_score, exam_ids, zipcode, radius } = req.query;
 
-    let query = supabase.from("acceptances").select(`
-        *,
-        institutions (
-          institution_id,
-          school_name,
-          zipcode
-        )
-      `);
+    let query = supabase.from("acceptances").select("*");
 
-    // We want acceptances greater than a given score.
-    if (min_cut_score) {
-      query = query.gt("cut_score", Number(min_cut_score));
+    // Append Cut Score if Provided
+    if (cut_score) {
+      query = query.gt("cut_score", Number(cut_score));
     }
 
-    // Mutiple Exam Ids can be filtered for by passing in query string of multiple exam_ids, delimited by a ",".
+    // Append any exam_ids provided
     if (exam_ids) {
       const ids = exam_ids.split(",").map((id) => id.trim());
       query = query.in("exam_id", ids);
     }
 
     let { data, error } = await query;
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
+    // Optional filter by nearby institutions;
     if (zipcode && radius) {
       const { institutions } = await getInstitutionsNearby(
         zipcode,
         Number(radius)
       );
       const nearbyInstitutionIds = institutions.map((i) => i.institution_id);
-
-      // This function will filter out any institutuions not within radius list.
-      data = data.filter((a) =>
-        nearbyInstitutionIds.includes(a.institution_id)
+      data = data.filter(
+        (a) =>
+          a.institution_id && nearbyInstitutionIds.includes(a.institution_id)
       );
     }
 
     res.status(200).json(data);
   } catch (err) {
-    console.error("Server error:", err.message);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching acceptances:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -67,7 +58,7 @@ router.patch("/:id", async (req, res) => {
     const { data, error } = await supabase
       .from("acceptances")
       .update(updates)
-      .eq("id", acceptanceId)
+      .eq("acceptance_id", acceptanceId)
       .select("*");
 
     if (error) {
