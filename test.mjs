@@ -1,65 +1,158 @@
 import { createClient } from "@supabase/supabase-js";
 import dayjs from "dayjs";
 import fs from "fs";
-import { ChartJSNodeCanvas } from "chartjs-node-canvas";
+import open from "open";
 
-// Supabase 연결
-const url = "https://fenmmkwfjbkragfshers.supabase.co";
-const key = "";
-const supabase = createClient(url, key);
+// 🔐 Supabase connection
+const supabase = createClient(
+  "https://fenmmkwfjbkragfshers.supabase.co",
+  ""
+);
 
-// bring data
+// 🛡 HTML escape utility
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// 🧮 중앙값 계산 함수
+function median(arr) {
+  if (arr.length === 0) return null;
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return (sorted.length % 2 === 0)
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
+// 📦 데이터 가져오기
 async function fetchData() {
   const { data, error } = await supabase.from("acceptances").select("*");
   if (error) throw error;
   return data;
 }
 
-// data filtering
+// 📅 1년 이상 지난 데이터 필터링
 function filterOldEntries(data) {
   const oneYearAgo = dayjs().subtract(365, "day");
-  return data.filter((row) => dayjs(row.last_updated).isBefore(oneYearAgo));
+  return data.filter(row => dayjs(row.last_updated).isBefore(oneYearAgo));
 }
 
-// 3️⃣ 시각화 (cut_score 분포)
-async function plotHistogram(values) {
-  const width = 800;
-  const height = 500;
-  const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
+// ⚠️ 최근 한달 내 중앙값 대비 30% 이상 높은 데이터 필터링
+function filterRecentHighEntries(data) {
+  const oneMonthAgo = dayjs().subtract(30, "day");
+  const recent = data.filter(row => dayjs(row.last_updated).isAfter(oneMonthAgo));
+  const valid = recent.filter(row =>
+    isFinite(row.cut_score) && isFinite(row.credits)
+  );
 
-  const configuration = {
-    type: "bar",
-    data: {
-      labels: values.map((_, i) => i + 1),
-      datasets: [
-        {
-          label: "cut_score Distribution (1 year+ old data)",
-          data: values,
-          backgroundColor: "rgba(255, 165, 0, 0.6)",
-        },
-      ],
-    },
-  };
+  if (valid.length === 0) {
+    return { filtered: [], medianCut: null, medianCredits: null };
+  }
 
-  const buffer = await chartJSNodeCanvas.renderToBuffer(configuration);
-  fs.writeFileSync("old_data_histogram.png", buffer);
-  console.log("📊 Histogram saved as old_data_histogram.png");
+  const cutScores = valid.map(r => Number(r.cut_score));
+  const credits = valid.map(r => Number(r.credits));
+
+  const medianCut = median(cutScores);
+  const medianCredits = median(credits);
+
+  const cutThreshold = medianCut * 0.3;
+  const creditsThreshold = medianCredits * 0.3;
+
+  const filtered = valid.filter(r =>
+    r.cut_score > cutThreshold || r.credits > creditsThreshold
+  );
+
+  return { filtered, medianCut, medianCredits };
 }
 
-// 4️⃣ 실행 함수
+// 📄 표 HTML 생성
+function generateTableHTML(entries, medianCut = null, medianCredits = null) {
+  const tableRows = entries.map(row => `
+    <tr>
+      <td>${escapeHtml(row.school_name ?? row.School_name ?? row.institution_id ?? "N/A")}</td>
+      <td>${row.cut_score ?? ""}</td>
+      <td>${row.credits ?? ""}</td>
+      <td>${dayjs(row.last_updated).format("YYYY-MM-DD")}</td>
+    </tr>
+  `).join("\n");
+
+  const safeMedianCut = (medianCut !== null && medianCut !== undefined) ? medianCut.toFixed(2) : "N/A";
+  const safeMedianCredits = (medianCredits !== null && medianCredits !== undefined) ? medianCredits.toFixed(2) : "N/A";
+
+  const medianInfo = `<p><strong>📊 Median cut_score:</strong> ${safeMedianCut} | <strong>credits:</strong> ${safeMedianCredits}</p>`;
+
+  return `
+    ${medianInfo}
+    <table>
+      <thead>
+        <tr>
+          <th>School Name</th>
+          <th>Cut Score</th>
+          <th>Credits</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
+  `;
+}
+
+// 📋 전체 HTML 출력 (2개 표 포함)
+function generateFullHTML(oldEntries, recentHighEntries, medianCut, medianCredits) {
+  const oldTable = generateTableHTML(oldEntries);
+  const recentTable = generateTableHTML(recentHighEntries, medianCut, medianCredits);
+
+  return `
+    <html>
+      <head>
+        <title>Supabase Data Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h2 { margin-top: 40px; }
+          table { border-collapse: collapse; width: 100%; font-size: 16px; margin-top: 10px; }
+          th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+          th { background-color: #f5f5f5; }
+          p { font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <h2>📅 Data >1 Year Old</h2>
+        ${oldTable}
+        <h2>⚠️ Anomaly Detection (Recent >30% above median)</h2>
+        ${recentTable}
+      </body>
+    </html>
+  `;
+}
+
+// 🚀 메인 실행
 async function main() {
-  console.log("⏳ Fetching data from Supabase...");
-  const df = await fetchData();
+  try {
+    console.log("⏳ Fetching data from Supabase...");
+    const data = await fetchData();
 
-  console.log(`✅ Total rows: ${df.length}`);
-  const oldEntries = filterOldEntries(df);
-  console.log(`⚠️ Old entries (1+ year): ${oldEntries.length}`);
+    const oldEntries = filterOldEntries(data);
+    const { filtered: highEntries, medianCut, medianCredits } = filterRecentHighEntries(data);
 
-  if (oldEntries.length > 0) {
-    const cutScores = oldEntries.map((r) => r.cut_score).filter((x) => x != null);
-    await plotHistogram(cutScores);
-  } else {
-    console.log("🎉 No data older than 1 year.");
+    if (oldEntries.length === 0 && highEntries.length === 0) {
+      console.log("🎉 No data to display.");
+      return;
+    }
+
+    const html = generateFullHTML(oldEntries, highEntries, medianCut, medianCredits);
+    const filePath = "./combined_data.html";
+    fs.writeFileSync(filePath, html);
+    console.log(`📋 Opening report (old: ${oldEntries.length}, anomalies: ${highEntries.length})`);
+    await open(filePath);
+
+  } catch (err) {
+    console.error("❌ Error occurred:", err);
   }
 }
 
