@@ -1,29 +1,56 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../middleware/supabaseClient");
+const { getInstitutionsNearby } = require("../utils/institutionsNearby"); // adjust path if needed
 
-// Get Specific Acceptances ; Can pass in addiitonal query parameters such as zipcode, exam_id, and cut_score
+// General Get Function to Retrieve Acceptances Based on User Filtering.
+// Allows for custom minimum cut score, exam_ids, and radius + zip
 router.get("/", async (req, res) => {
   try {
-    const { zipcode, exam_id, cut_score } = req.query;
+    const { min_cut_score, exam_ids, zipcode, radius } = req.query;
 
-    let query = supabase.from("acceptances").select("*");
+    let query = supabase.from("acceptances").select(`
+        *,
+        institutions (
+          institution_id,
+          school_name,
+          zipcode
+        )
+      `);
 
-    if (zipcode) query = query.eq("zipcode", zipcode);
-    if (exam_id) query = query.eq("exam_id", exam_id);
-    if (cut_score) query = query.eq("cut_score", cut_score);
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Supabase error (GET /acceptances):", error.message);
-      return res.status(500).json({ error: "Failed to fetch acceptances." });
+    // We want acceptances greater than a given score.
+    if (min_cut_score) {
+      query = query.gt("cut_score", Number(min_cut_score));
     }
 
-    return res.status(200).json(data || []);
+    // Mutiple Exam Ids can be filtered for by passing in query string of multiple exam_ids, delimited by a ",".
+    if (exam_ids) {
+      const ids = exam_ids.split(",").map((id) => id.trim());
+      query = query.in("exam_id", ids);
+    }
+
+    let { data, error } = await query;
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (zipcode && radius) {
+      const { institutions } = await getInstitutionsNearby(
+        zipcode,
+        Number(radius)
+      );
+      const nearbyInstitutionIds = institutions.map((i) => i.institution_id);
+
+      // This function will filter out any institutuions not within radius list.
+      data = data.filter((a) =>
+        nearbyInstitutionIds.includes(a.institution_id)
+      );
+    }
+
+    res.status(200).json(data);
   } catch (err) {
-    console.error("Server error (GET /acceptances):", err.message);
-    return res.status(500).json({ error: "Internal server error." });
+    console.error("Server error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
