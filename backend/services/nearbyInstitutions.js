@@ -1,7 +1,7 @@
 const supabase = require("../middleware/supabaseClient");
 const zipcodes = require("zipcodes");
 
-// General Function to Get List of Institituions based off loction + radiuis
+// General Function to Get List of Institituions based off loction + radius
 async function getInstitutionsNearby(zipcode, radius) {
   if (!zipcodes.lookup(zipcode)) {
     throw new Error("Invalid ZIP code.");
