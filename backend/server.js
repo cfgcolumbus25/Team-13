@@ -1,23 +1,26 @@
-import express from "express";
-import cors from "cors";
-import pg from "pg";
-import dotenv from "dotenv";
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+
+const PORT = "8000";
 
 dotenv.config();
-let { Pool } = pg;
 
-let app = express();
+const app = express();
 //Need cors if frontend and backend are on different ports
 app.use(cors());
 app.use(express.json());
-let pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
 
+const examRoutes = require("./routes/exams");
+const authRoutes = require("./routes/auth");
+const institutionRoutes = require("./routes/institutions");
+const acceptanceRoutes = require("./routes/acceptances");
+
+// Mount the Routes from the Different Route Files
+app.use("/api/auth", authRoutes);
+app.use("/api/exams", examRoutes);
+app.use("/api/institutions", institutionRoutes);
+app.use("/api/acceptance", acceptanceRoutes);
 
 app.listen(PORT, () => {
   console.log("Server is running on port " + PORT);
