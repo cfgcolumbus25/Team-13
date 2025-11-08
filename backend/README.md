@@ -40,5 +40,9 @@ node server.js
 ```
 
 
+## 5.  Create SQL Database Schemas
+The "setup.sql" file contains the database schema used for the backend. This SQL statement can be ran/duplicated in order to recreate the schemas for local testing
+
+
 
 
