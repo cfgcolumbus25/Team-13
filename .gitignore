@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+data/
+.env
 */node_modules/
 npm-debug.log*
 yarn-debug.log*
