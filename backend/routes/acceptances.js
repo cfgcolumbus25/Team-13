@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../middleware/supabaseClient");
-const { getInstitutionsNearby } = require("../utils/institutionsNearby"); // adjust path if needed
+const { getInstitutionsNearby } = require("../services/nearbyInstitutions");
 
 // General Get Function to Retrieve Acceptances Based on User Filtering.
 // Allows for custom minimum cut score, exam_ids, and radius + zip

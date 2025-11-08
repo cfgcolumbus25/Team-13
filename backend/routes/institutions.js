@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../middleware/supabaseClient");
-const { getInstitutionsNearby } = require("../services/institutionService");
+const { getInstitutionsNearby } = require("../services/nearbyInstitutions");
 
 // Get All Current Institituions
 router.get("/", async (req, res) => {
