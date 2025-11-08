@@ -18,7 +18,7 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-// 🧮 중앙값 계산 함수
+// 🧮 calculate median
 function median(arr) {
   if (arr.length === 0) return null;
   const sorted = arr.slice().sort((a, b) => a - b);
@@ -28,20 +28,20 @@ function median(arr) {
     : sorted[mid];
 }
 
-// 📦 데이터 가져오기
+// 📦 gather data
 async function fetchData() {
   const { data, error } = await supabase.from("acceptances").select("*");
   if (error) throw error;
   return data;
 }
 
-// 📅 1년 이상 지난 데이터 필터링
+// 📅 filtering data more than one year
 function filterOldEntries(data) {
   const oneYearAgo = dayjs().subtract(365, "day");
   return data.filter(row => dayjs(row.last_updated).isBefore(oneYearAgo));
 }
 
-// ⚠️ 최근 한달 내 중앙값 대비 30% 이상 높은 데이터 필터링
+// ⚠️ the latest data within a month & more 30% than the average
 function filterRecentHighEntries(data) {
   const oneMonthAgo = dayjs().subtract(30, "day");
   const recent = data.filter(row => dayjs(row.last_updated).isAfter(oneMonthAgo));
@@ -69,8 +69,36 @@ function filterRecentHighEntries(data) {
   return { filtered, medianCut, medianCredits };
 }
 
-// 📄 표 HTML 생성
-function generateTableHTML(entries, medianCut = null, medianCredits = null) {
+// 평균(중앙값) 표시 없이 표만 생성
+function generateTableWithoutMedianHTML(entries) {
+  const tableRows = entries.map(row => `
+    <tr>
+      <td>${escapeHtml(row.school_name ?? row.School_name ?? row.institution_id ?? "N/A")}</td>
+      <td>${row.cut_score ?? ""}</td>
+      <td>${row.credits ?? ""}</td>
+      <td>${dayjs(row.last_updated).format("YYYY-MM-DD")}</td>
+    </tr>
+  `).join("\n");
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>School Name</th>
+          <th>Cut Score</th>
+          <th>Credits</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
+  `;
+}
+
+// 평균(중앙값) 표시 포함 표 생성(기존 함수)
+function generateTableWithMedianHTML(entries, medianCut = null, medianCredits = null) {
   const tableRows = entries.map(row => `
     <tr>
       <td>${escapeHtml(row.school_name ?? row.School_name ?? row.institution_id ?? "N/A")}</td>
@@ -103,10 +131,10 @@ function generateTableHTML(entries, medianCut = null, medianCredits = null) {
   `;
 }
 
-// 📋 전체 HTML 출력 (2개 표 포함)
-function generateFullHTML(oldEntries, recentHighEntries, medianCut, medianCredits) {
-  const oldTable = generateTableHTML(oldEntries);
-  const recentTable = generateTableHTML(recentHighEntries, medianCut, medianCredits);
+// 전체 HTML 생성 함수에서 분리 적용
+function generateFullHTMLSeperateMedian(oldEntries, recentEntries, medianCut, medianCredits) {
+  const oldTable = generateTableWithoutMedianHTML(oldEntries);
+  const recentTable = generateTableWithMedianHTML(recentEntries, medianCut, medianCredits);
 
   return `
     <html>
@@ -131,7 +159,7 @@ function generateFullHTML(oldEntries, recentHighEntries, medianCut, medianCredit
   `;
 }
 
-// 🚀 메인 실행
+// 🚀 implement main
 async function main() {
   try {
     console.log("⏳ Fetching data from Supabase...");
@@ -145,7 +173,7 @@ async function main() {
       return;
     }
 
-    const html = generateFullHTML(oldEntries, highEntries, medianCut, medianCredits);
+    const html = generateFullHTMLSeperateMedian(oldEntries, highEntries, medianCut, medianCredits);
     const filePath = "./combined_data.html";
     fs.writeFileSync(filePath, html);
     console.log(`📋 Opening report (old: ${oldEntries.length}, anomalies: ${highEntries.length})`);
